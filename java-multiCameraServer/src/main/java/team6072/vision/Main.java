@@ -68,7 +68,7 @@ public final class Main {
     }
 
     public static int team;
-    public static boolean server;
+
     public static List<CameraConfig> cameraConfigs = new ArrayList<>();
 
     // private constructor
@@ -91,26 +91,31 @@ public final class Main {
         // start NetworkTables
         NetworkTableInstance ntinst = NetworkTableInstance.getDefault();
         // if (server) {
-            System.out.println("Setting up NetworkTables server");
-            ntinst.startServer();
+            // System.out.println("Setting up NetworkTables server");
+            // ntinst.startServer();
         // } else {
-        //     System.out.println("Setting up NetworkTables client for team " + team);
-        //     ntinst.startClientTeam(team);
+            team = 6072;
+            System.out.println("Setting up NetworkTables client for team " + team);
+            ntinst.startClientTeam(team);
         // }
 
         // start cameras
         List<VideoSource> cameras = new ArrayList<>();
         for (CameraConfig cameraConfig : cameraConfigs) {
-            cameras.add(startCamera(cameraConfig));
+            System.out.println("Starting camera: " + cameraConfig.name + "  path: " + cameraConfig.path);
+            VideoSource cam = startCamera(cameraConfig);
+            cameras.add(cam);
+            VisionThread visionThread = new VisionThread(cam, new CloseUpPipeline(), new CloseUpPipelineListener(cameraConfig.name));
+            visionThread.start();
         }
 
         // start image processing on camera 0 if present
-        System.out.println("Camera Number = " + cameras.size());
-        if (cameras.size() >= 1) {
-            VisionThread visionThread = new VisionThread(cameras.get(0), new CloseUpPipeline(),
-                    new CloseUpPipelineListener());
-            visionThread.start();
-        }
+        // System.out.println("Camera Number = " + cameras.size());
+        // if (cameras.size() >= 1) {
+        //     VisionThread visionThread = new VisionThread(cameras.get(0), new CloseUpPipeline(),
+        //             new CloseUpPipelineListener());
+        //     visionThread.start();
+        // }
 
         // loop forever
         for (;;) {
@@ -121,6 +126,18 @@ public final class Main {
             }
         }
     }
+
+    /**
+     * Start running the camera.
+     */
+    public static VideoSource startCamera(CameraConfig config) {
+        System.out.println("Starting camera '" + config.name + "' on " + config.path);
+        VideoSource camera = CameraServer.getInstance().startAutomaticCapture(config.name, config.path);
+        Gson gson = new GsonBuilder().create();
+        camera.setConfigJson(gson.toJson(config.config));
+        return camera;
+    }
+    
 
     /**
      * Read configuration file. Return FALSE if fail
@@ -213,15 +230,6 @@ public final class Main {
         return true;
     }
 
-    /**
-     * Start running the camera.
-     */
-    public static VideoSource startCamera(CameraConfig config) {
-        System.out.println("Starting camera '" + config.name + "' on " + config.path);
-        VideoSource camera = CameraServer.getInstance().startAutomaticCapture(config.name, config.path);
-        Gson gson = new GsonBuilder().create();
-        camera.setConfigJson(gson.toJson(config.config));
-        return camera;
-    }
+
 
 }

@@ -56,13 +56,16 @@ public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPip
     private int mCallCounter = 0;
     private int mCounter;
 
-    public CloseUpPipelineListener() {
+    public CloseUpPipelineListener(String camName) {
         // instantiate Network Tables
         NetworkTableInstance tblInst = NetworkTableInstance.getDefault();
-        mTbl = tblInst.getTable("vision");
+        mTbl = tblInst.getTable("Vision_Drive");
+        NetworkTableEntry ent = mTbl.getEntry("CamName");
+        ent.setString(camName);
+
         // Instantiate Camera Server Stuff
         mCameraServer = CameraServer.getInstance();
-        mCameraOutput = mCameraServer.putVideo("Camera Output", 320, 240);
+        mCameraOutput = mCameraServer.putVideo(camName, 640, 480);
     }
 
     private boolean m_inCopyPipeline = false;

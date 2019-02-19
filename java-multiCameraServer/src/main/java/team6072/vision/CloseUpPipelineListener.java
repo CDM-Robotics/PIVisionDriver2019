@@ -68,6 +68,7 @@ public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPip
         mCameraOutput = mCameraServer.putVideo(camName, 640, 480);
     }
 
+
     private boolean m_inCopyPipeline = false;
 
     /**

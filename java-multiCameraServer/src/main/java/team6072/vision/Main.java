@@ -21,9 +21,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import edu.wpi.cscore.UsbCamera;
 import edu.wpi.cscore.VideoSource;
 import edu.wpi.first.cameraserver.CameraServer;
-import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.*;
 import edu.wpi.first.vision.VisionPipeline;
 import edu.wpi.first.vision.VisionThread;
 
@@ -67,9 +68,15 @@ public final class Main {
         public JsonObject config;
     }
 
-    public static int team;
+    public static int m_team;
 
-    public static List<CameraConfig> cameraConfigs = new ArrayList<>();
+    private static boolean m_useCam0 = true;
+
+    public static List<CameraConfig> m_cameraConfigs = new ArrayList<>();
+
+    private static ArrayList<VideoSource> m_cameras;
+
+    private static VisionThread m_visionThread;
 
     // private constructor
     private Main() {
@@ -89,33 +96,27 @@ public final class Main {
         }
 
         // start NetworkTables
-        NetworkTableInstance ntinst = NetworkTableInstance.getDefault();
-        // if (server) {
-            // System.out.println("Setting up NetworkTables server");
-            // ntinst.startServer();
-        // } else {
-            team = 6072;
-            System.out.println("Setting up NetworkTables client for team " + team);
-            ntinst.startClientTeam(team);
-        // }
+        NetworkTableInstance tblInst = NetworkTableInstance.getDefault();
+        m_team = 6072;
+        System.out.println("Setting up NetworkTables client for team " + m_team);
+        tblInst.startClientTeam(m_team);
+        NetworkTable tbl = tblInst.getTable("Vision_Drive");
+        NetworkTableEntry ent = tbl.getEntry("PI Name");
+        ent.setString("Drive PI");
+        NetworkTableEntry entUseCam0 = tbl.getEntry("UseCam0");
+        entUseCam0.setBoolean(m_useCam0);
+        tbl.addEntryListener("UseCam0", Main::UseCam0_Listener, EntryListenerFlags.kNew | EntryListenerFlags.kUpdate);
 
-        // start cameras
-        List<VideoSource> cameras = new ArrayList<>();
-        for (CameraConfig cameraConfig : cameraConfigs) {
+        // define cameras, start pipeline on camera 0
+        m_cameras = new ArrayList<VideoSource>();
+        for (CameraConfig cameraConfig : m_cameraConfigs) {
             System.out.println("Starting camera: " + cameraConfig.name + "  path: " + cameraConfig.path);
-            VideoSource cam = startCamera(cameraConfig);
-            cameras.add(cam);
-            VisionThread visionThread = new VisionThread(cam, new CloseUpPipeline(), new CloseUpPipelineListener(cameraConfig.name));
-            visionThread.start();
+            VideoSource cam = makeCamera(cameraConfig);
+            m_cameras.add(cam);
         }
-
-        // start image processing on camera 0 if present
-        // System.out.println("Camera Number = " + cameras.size());
-        // if (cameras.size() >= 1) {
-        //     VisionThread visionThread = new VisionThread(cameras.get(0), new CloseUpPipeline(),
-        //             new CloseUpPipelineListener());
-        //     visionThread.start();
-        // }
+        VideoSource cam0 = m_cameras.get(0);
+        m_visionThread = new VisionThread(cam0, new CloseUpPipeline(), new CloseUpPipelineListener(cam0.getName()));
+        m_visionThread.start();
 
         // loop forever
         for (;;) {
@@ -127,12 +128,29 @@ public final class Main {
         }
     }
 
+    // implement TableEntry Listener
+    public static void UseCam0_Listener(NetworkTable table, String key, NetworkTableEntry entry, NetworkTableValue value, int flags) {
+        m_useCam0 = !m_useCam0;
+        int camNbr = 0;
+        if (!m_useCam0) {
+            camNbr = 1;
+        }
+        System.out.println(String.format("useCam0:  key %s  val: %b  camNbr: %d", key, value.getBoolean(), camNbr));
+        m_visionThread.stop();
+        VideoSource cam = m_cameras.get(camNbr);
+        m_visionThread = new VisionThread(cam, new CloseUpPipeline(), new CloseUpPipelineListener(cam.getName()));
+        m_visionThread.start();        
+    }
+
+
+
     /**
-     * Start running the camera.
+     * Create and configure a camera from the config file.
      */
-    public static VideoSource startCamera(CameraConfig config) {
+    public static UsbCamera makeCamera(CameraConfig config) {
         System.out.println("Starting camera '" + config.name + "' on " + config.path);
-        VideoSource camera = CameraServer.getInstance().startAutomaticCapture(config.name, config.path);
+        UsbCamera camera = new UsbCamera(config.name, config.path);
+        //VideoSource camera = CameraServer.getInstance().startAutomaticCapture(config.name, config.path);
         Gson gson = new GsonBuilder().create();
         camera.setConfigJson(gson.toJson(config.config));
         return camera;
@@ -166,19 +184,19 @@ public final class Main {
             parseError("could not read team number");
             return false;
         }
-        team = teamElement.getAsInt();
+        m_team = teamElement.getAsInt();
 
         // ntmode (optional)
-        if (obj.has("ntmode")) {
-            String str = obj.get("ntmode").getAsString();
-            if ("client".equalsIgnoreCase(str)) {
-                server = false;
-            } else if ("server".equalsIgnoreCase(str)) {
-                server = true;
-            } else {
-                parseError("could not understand ntmode value '" + str + "'");
-            }
-        }
+        // if (obj.has("ntmode")) {
+        //     String str = obj.get("ntmode").getAsString();
+        //     if ("client".equalsIgnoreCase(str)) {
+        //         server = false;
+        //     } else if ("server".equalsIgnoreCase(str)) {
+        //         server = true;
+        //     } else {
+        //         parseError("could not understand ntmode value '" + str + "'");
+        //     }
+        // }
 
         // cameras
         JsonElement camerasElement = obj.get("cameras");
@@ -226,7 +244,7 @@ public final class Main {
 
         cam.config = config;
 
-        cameraConfigs.add(cam);
+        m_cameraConfigs.add(cam);
         return true;
     }
 

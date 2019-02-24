@@ -3,7 +3,6 @@ package team6072.vision;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.vision.*;
 
-
 import edu.wpi.cscore.CvSource;
 import edu.wpi.cscore.VideoSource;
 import edu.wpi.first.cameraserver.CameraServer;
@@ -12,7 +11,6 @@ import org.opencv.core.Point;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
-
 
 public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPipeline> {
 
@@ -30,7 +28,6 @@ public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPip
     private final int X_CAMERA_FOV = 320;
     private final int Y_CAMERA_FOV = 240;
 
-
     public CloseUpPipelineListener(String camName) {
         // instantiate Network Tables
         NetworkTableInstance tblInst = NetworkTableInstance.getDefault();
@@ -42,7 +39,6 @@ public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPip
         mCameraServer = CameraServer.getInstance();
         mCameraOutput = mCameraServer.putVideo(camName, 320, 240);
     }
-
 
     private boolean m_inCopyPipeline = false;
 
@@ -64,13 +60,18 @@ public class CloseUpPipelineListener implements VisionRunner.Listener<CloseUpPip
             }
             m_inCopyPipeline = true;
             if (m_enabled) {
-               // mCameraOutput.putFrame(pipeline.source());
+                // mCameraOutput.putFrame(pipeline.source());
                 m_inCopyPipeline = true;
                 Mat pic = pipeline.source();
-                Point pt1 = new Point(.45 * X_CAMERA_FOV, 0.0 * Y_CAMERA_FOV);
-                Point pt2 = new Point(.55 * X_CAMERA_FOV, 1.0 * Y_CAMERA_FOV);
-                Scalar color = new Scalar(255);
-                int thickness = 3;
+                double x1RectPoint = 0.48;
+                double x2RectPoint = 0.52;
+                double y1RectPoint = 0.0;
+                double y2RectPoint = 1.0;
+
+                Point pt1 = new Point(x1RectPoint * X_CAMERA_FOV, y1RectPoint * Y_CAMERA_FOV);
+                Point pt2 = new Point(x2RectPoint * X_CAMERA_FOV, y2RectPoint * Y_CAMERA_FOV);
+                Scalar color = new Scalar(255, 255, 255);
+                int thickness = 2;
                 Imgproc.rectangle(pic, pt1, pt2, color, thickness);
                 mCameraOutput.putFrame(pic);
             }

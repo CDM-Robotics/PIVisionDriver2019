@@ -27,10 +27,9 @@ import org.opencv.objdetect.*;
 public class CloseUpPipeline implements VisionPipeline {
 
 	//Outputs
-	private Mat cvResizeOutput = new Mat();
-	private Mat hsvThresholdOutput = new Mat();
-	private Mat mCvResizeSrc;
-	private ArrayList<MatOfPoint> findContoursOutput = new ArrayList<MatOfPoint>();
+
+	private Mat mOutputMat;
+
 
 	static {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
@@ -40,14 +39,11 @@ public class CloseUpPipeline implements VisionPipeline {
 	 * This is the primary method that runs the entire pipeline and updates the outputs.
 	 */
 	@Override public void process(Mat source0) {
-		// Step CV_resize0:
-		mCvResizeSrc = source0;
-
+		mOutputMat = source0;
 	}
 
-	public Mat source()
-	{
-		return mCvResizeSrc;
+	public Mat source() {
+		return mOutputMat;
 	}
 
 }

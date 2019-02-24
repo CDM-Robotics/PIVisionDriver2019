@@ -78,6 +78,15 @@ public final class Main {
 
     private static VisionThread m_visionThread;
 
+    private static VideoSource m_cam0;
+    private static VideoSource m_cam1;
+
+    private static CloseUpPipelineListener m_listener0;
+    private static CloseUpPipelineListener m_listener1;
+
+    private static VisionThread m_visionThread0;
+    private static VisionThread m_visionThread1;
+
     // private constructor
     private Main() {
     }
@@ -105,18 +114,27 @@ public final class Main {
         ent.setString("Drive PI");
         NetworkTableEntry entUseCam0 = tbl.getEntry("UseCam0");
         entUseCam0.setBoolean(m_useCam0);
-        tbl.addEntryListener("UseCam0", Main::UseCam0_Listener, EntryListenerFlags.kNew | EntryListenerFlags.kUpdate);
+        //tbl.addEntryListener("UseCam0", Main::UseCam0_Listener, EntryListenerFlags.kNew | EntryListenerFlags.kUpdate);
 
         // define cameras, start pipeline on camera 0
-        m_cameras = new ArrayList<VideoSource>();
-        for (CameraConfig cameraConfig : m_cameraConfigs) {
-            System.out.println("Starting camera: " + cameraConfig.name + "  path: " + cameraConfig.path);
-            VideoSource cam = makeCamera(cameraConfig);
-            m_cameras.add(cam);
-        }
-        VideoSource cam0 = m_cameras.get(0);
-        m_visionThread = new VisionThread(cam0, new CloseUpPipeline(), new CloseUpPipelineListener(cam0.getName()));
-        m_visionThread.start();
+        // m_cameras = new ArrayList<VideoSource>();
+        // for (CameraConfig cameraConfig : m_cameraConfigs) {
+        //     System.out.println("Starting camera: " + cameraConfig.name + "  path: " + cameraConfig.path);
+        //     VideoSource cam = makeCamera(cameraConfig);
+        //     m_cameras.add(cam);
+        // }
+        m_cam0 = makeCamera(m_cameraConfigs.get(0));
+        m_cam1 = makeCamera(m_cameraConfigs.get(1));
+        m_listener0 = new CloseUpPipelineListener(m_cam0.getName());
+        m_listener0.setEnabled(true);
+        m_listener1 = new CloseUpPipelineListener(m_cam1.getName());
+        m_listener1.setEnabled(true);
+
+        m_visionThread0 = new VisionThread(m_cam0, new CloseUpPipeline(), m_listener0);
+        m_visionThread0.start();
+
+        m_visionThread1 = new VisionThread(m_cam1, new CloseUpPipeline(), m_listener1);
+        m_visionThread1.start();
 
         // loop forever
         for (;;) {
@@ -132,14 +150,15 @@ public final class Main {
     public static void UseCam0_Listener(NetworkTable table, String key, NetworkTableEntry entry, NetworkTableValue value, int flags) {
         m_useCam0 = !m_useCam0;
         int camNbr = 0;
-        if (!m_useCam0) {
-            camNbr = 1;
+        if (m_useCam0) {
+            m_listener0.setEnabled(true);
+            m_listener1.setEnabled(false);
         }
-        System.out.println(String.format("useCam0:  key %s  val: %b  camNbr: %d", key, value.getBoolean(), camNbr));
-        m_visionThread.stop();
-        VideoSource cam = m_cameras.get(camNbr);
-        m_visionThread = new VisionThread(cam, new CloseUpPipeline(), new CloseUpPipelineListener(cam.getName()));
-        m_visionThread.start();        
+        else {
+            m_listener0.setEnabled(false);
+            m_listener1.setEnabled(true);          
+        }
+        System.out.println(String.format("useCam:  key %s  val: %b  camNbr: %d", key, value.getBoolean(), camNbr));
     }
 
 
